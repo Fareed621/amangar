@@ -1,0 +1,98 @@
+{
+  "project_info": {
+    "project_number": "205095642995",
+    "project_id": "amanghar-app",
+    "storage_bucket": "amanghar-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:205095642995:android:0938011733351eb8d48706",
+        "android_client_info": {
+          "package_name": "com.amanghar.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "205095642995-a30jn8c29oifuujuj40b1fiqekieq8c3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.amanghar.app",
+            "certificate_hash": "7a2f206e6dda54b58367d4e74486fb88db304081"
+          }
+        },
+        {
+          "client_id": "205095642995-c789gn0q2c84jhnj1tmebarcop1jd7ja.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.amanghar.app",
+            "certificate_hash": "80d626917750b2f30452d3af2267732087f255c1"
+          }
+        },
+        {
+          "client_id": "205095642995-46rmpfhfiaumpu8pcv03rsnm7v29v4ov.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-3BkFjcv_ibtiK7jaRF23iOmW0Uo-6NQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "205095642995-46rmpfhfiaumpu8pcv03rsnm7v29v4ov.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "205095642995-q76ubkfnmvodlei260a0s9a82b4ds3pm.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.amangharApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:205095642995:android:abf62e64b22d5258d48706",
+        "android_client_info": {
+          "package_name": "com.example.amanghar_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "205095642995-46rmpfhfiaumpu8pcv03rsnm7v29v4ov.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-3BkFjcv_ibtiK7jaRF23iOmW0Uo-6NQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "205095642995-46rmpfhfiaumpu8pcv03rsnm7v29v4ov.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "205095642995-q76ubkfnmvodlei260a0s9a82b4ds3pm.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.amangharApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
