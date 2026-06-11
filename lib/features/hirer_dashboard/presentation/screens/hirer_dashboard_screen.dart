@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -20,11 +19,11 @@ import '../../../../core/widgets/app_error_widget.dart';
 import '../../../../core/widgets/provider_card.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../notifications/presentation/widgets/notification_bell.dart';
-import '../../../auth/presentation/providers/auth_state_provider.dart';
 import '../../../search/presentation/providers/search_provider.dart';
 import '../providers/hirer_dashboard_provider.dart';
 import '../../../../core/widgets/app_banner_ad.dart';
 import '../widgets/prayer_times_card.dart';
+import '../../../../core/widgets/developer_console_widget.dart';
 
 class HirerDashboardScreen extends ConsumerWidget {
   const HirerDashboardScreen({super.key});
@@ -55,13 +54,36 @@ class HirerDashboardScreen extends ConsumerWidget {
   }
 }
 
-class _HirerDashboardContent extends ConsumerWidget {
+class _HirerDashboardContent extends ConsumerStatefulWidget {
   const _HirerDashboardContent({required this.state});
 
   final HirerDashboardState state;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_HirerDashboardContent> createState() =>
+      _HirerDashboardContentState();
+}
+
+class _HirerDashboardContentState
+    extends ConsumerState<_HirerDashboardContent> {
+  // ── LAYER 4c: Hidden 5-tap trigger for Developer Diagnostics Panel ──────────
+  // GestureDetector wraps the dashboard greeting text. Five rapid taps toggle
+  // the diagnostics overlay. Uses a plain int counter — no Riverpod needed
+  // because this is a pure UI affordance decoupled from app state.
+  int _tapCount = 0;
+  static const int _tapsRequired = 5;
+
+  void _onGreetingTap() {
+    _tapCount++;
+    if (_tapCount >= _tapsRequired) {
+      _tapCount = 0;
+      diagnosticsVisible.value = !diagnosticsVisible.value;
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider).valueOrNull;
     final firstName = user?.name.split(' ').first ?? 'User';
 
@@ -107,10 +129,14 @@ class _HirerDashboardContent extends ConsumerWidget {
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               SizedBox(height: 20.h),
-              Text(
-                '${Formatters.timeGreeting()}, $firstName!',
-                style: AppTextStyles.headlineLarge.copyWith(color: AppColors.onBackground),
-              ).animate().fadeIn(duration: AppDurations.normal),
+              // ── LAYER 4c: 5-tap diagnostic trigger on greeting text ─────
+              GestureDetector(
+                onTap: _onGreetingTap,
+                child: Text(
+                  '${Formatters.timeGreeting()}, $firstName!',
+                  style: AppTextStyles.headlineLarge.copyWith(color: AppColors.onBackground),
+                ).animate().fadeIn(duration: AppDurations.normal),
+              ),
               SizedBox(height: 24.h),
 
               // Category Cards
@@ -193,7 +219,7 @@ class _HirerDashboardContent extends ConsumerWidget {
                   .fadeIn(delay: 200.ms, duration: AppDurations.normal),
               SizedBox(height: 28.h),
 
-              if (state.recentBookings.isNotEmpty) ...[
+              if (widget.state.recentBookings.isNotEmpty) ...[
                 _SectionHeader(
                   title: 'Recent Bookings',
                   actionLabel: 'View All',
@@ -204,10 +230,10 @@ class _HirerDashboardContent extends ConsumerWidget {
                   height: 150.h,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: state.recentBookings.length,
+                    itemCount: widget.state.recentBookings.length,
                     separatorBuilder: (_, __) => SizedBox(width: 12.w),
                     itemBuilder: (ctx, i) {
-                      final b = state.recentBookings[i];
+                      final b = widget.state.recentBookings[i];
                       return _RecentBookingCard(booking: b)
                           .animate(delay: Duration(milliseconds: i * 60))
                           .fadeIn()
@@ -218,7 +244,7 @@ class _HirerDashboardContent extends ConsumerWidget {
                 SizedBox(height: 32.h),
               ],
 
-              if (state.favorites.isNotEmpty) ...[
+              if (widget.state.favorites.isNotEmpty) ...[
                 _SectionHeader(
                   title: 'Your Favorites',
                   actionLabel: 'View All',
@@ -229,10 +255,10 @@ class _HirerDashboardContent extends ConsumerWidget {
                   height: 160.h,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: state.favorites.length,
+                    itemCount: widget.state.favorites.length,
                     separatorBuilder: (_, __) => SizedBox(width: 12.w),
                     itemBuilder: (ctx, i) {
-                      final favorite = state.favorites[i];
+                      final favorite = widget.state.favorites[i];
                       return _FavoriteCard(
                         favorite: favorite,
                         onTap: () => context.push(RouteNames.providerDetailPath(favorite.providerId)),
@@ -245,10 +271,10 @@ class _HirerDashboardContent extends ConsumerWidget {
               
               const AppBannerAd(),
               SizedBox(height: 16.h),
-              _SectionHeader(title: 'Recommended for You'),
+              const _SectionHeader(title: 'Recommended for You'),
               SizedBox(height: 12.h),
-              ...List.generate(state.recommendedProviders.length, (i) {
-                final p = state.recommendedProviders[i];
+              ...List.generate(widget.state.recommendedProviders.length, (i) {
+                final p = widget.state.recommendedProviders[i];
                 return Padding(
                   padding: EdgeInsets.only(bottom: 16.h),
                   child: ProviderCard(

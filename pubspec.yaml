@@ -63,6 +63,7 @@ dependencies:
   firebase_app_check: ^0.3.2+10
   firebase_core_platform_interface: ^6.0.3  # pinned for google_mobile_ads compat
   flutter_local_notifications: ^22.0.0
+  workmanager: ^0.6.0         # Background task scheduling (Android WorkManager API)
 
 dev_dependencies:
   flutter_test:

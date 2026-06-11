@@ -1,7 +1,62 @@
 // lib/core/services/prayer_times_service.dart
 import 'dart:convert';
+import 'dart:developer'; // Timeline API for DevTools Flame Graph profiling
+import 'package:flutter/foundation.dart'; // compute() — background Isolate helper
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
+
+// ── LAYER 1: Top-level parse function (REQUIRED for compute()) ────────────────
+//
+// Dart's compute() helper serialises this function pointer + the raw String
+// argument and runs them in a separate Dart Isolate on a background OS thread.
+//
+// RULES:
+//  • Must be top-level (not a closure, not a class method) — Isolate constraint.
+//  • Argument and return type must be JSON-serialisable primitives or typed
+//    objects — PrayerTimesModel qualifies because we construct it inside here.
+//
+// LAYER 2: Timeline profiling block wraps the actual CPU work (jsonDecode +
+// model construction) so that a named block appears in DevTools → Flame Graph
+// directly on the background isolate's thread lane.
+PrayerTimesModel _parsePrayerTimesResponse(String rawBody) {
+  // Profile marker: visible in the background-isolate lane of DevTools.
+  Timeline.startSync('PrayerTimes_JSONParse');
+  try {
+    final body = jsonDecode(rawBody) as Map<String, dynamic>;
+
+    final code = body['code'] as int?;
+    if (code != 200) {
+      throw PrayerTimesException(
+        'API returned code $code: ${body['status']}',
+      );
+    }
+
+    final data = body['data'] as Map<String, dynamic>?;
+    final timings = data?['timings'] as Map<String, dynamic>?;
+    final date = data?['date'] as Map<String, dynamic>?;
+    final readable = date?['readable'] as String?;
+
+    if (timings == null) {
+      throw const PrayerTimesException('Missing timings in API response');
+    }
+
+    // Strip timezone suffix from times like "05:12 (PKT)"
+    String clean(String? raw) => (raw ?? '--:--').split(' ').first.trim();
+
+    return PrayerTimesModel(
+      city: 'Karachi',
+      date: readable ?? '',
+      fajr: clean(timings['Fajr'] as String?),
+      dhuhr: clean(timings['Dhuhr'] as String?),
+      asr: clean(timings['Asr'] as String?),
+      maghrib: clean(timings['Maghrib'] as String?),
+      isha: clean(timings['Isha'] as String?),
+    );
+  } finally {
+    Timeline.finishSync(); // guaranteed even if jsonDecode throws
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 /// Wraps the free Aladhan REST API for prayer times.
 /// Endpoint: https://api.aladhan.com/v1/timingsByCity
@@ -47,37 +102,21 @@ class PrayerTimesService {
         );
       }
 
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-
-      final code = body['code'] as int?;
-      if (code != 200) {
-        throw PrayerTimesException(
-          'API returned code $code: ${body['status']}',
-        );
+      // ── LAYER 1 & 2: Isolate dispatch + main-thread Timeline marker ────────
+      // Timeline marker on the MAIN isolate — covers the full round-trip of
+      // spawning the background isolate and awaiting its result.
+      Timeline.startSync('PrayerTimes_IsolateDispatch');
+      try {
+        // compute() sends response.body to a background Dart Isolate.
+        // _parsePrayerTimesResponse runs JSON decoding + model build there,
+        // keeping the UI thread free for the entire parsing duration.
+        final model = await compute(_parsePrayerTimesResponse, response.body);
+        _log.i('[PrayerTimes] Parsed on background isolate ✓');
+        return model;
+      } finally {
+        Timeline.finishSync(); // guaranteed even if compute() throws
       }
-
-      final data = body['data'] as Map<String, dynamic>?;
-      final timings = data?['timings'] as Map<String, dynamic>?;
-      final date = data?['date'] as Map<String, dynamic>?;
-      final readable = date?['readable'] as String?;
-
-      if (timings == null) {
-        throw const PrayerTimesException('Missing timings in API response');
-      }
-
-      // Strip seconds suffix from times like "05:12 (PKT)"
-      String _clean(String? raw) =>
-          (raw ?? '--:--').split(' ').first.trim();
-
-      return PrayerTimesModel(
-        city: city,
-        date: readable ?? '',
-        fajr: _clean(timings['Fajr'] as String?),
-        dhuhr: _clean(timings['Dhuhr'] as String?),
-        asr: _clean(timings['Asr'] as String?),
-        maghrib: _clean(timings['Maghrib'] as String?),
-        isha: _clean(timings['Isha'] as String?),
-      );
+      // ───────────────────────────────────────────────────────────────────────
     } on PrayerTimesException {
       rethrow;
     } catch (e, st) {
@@ -109,17 +148,17 @@ class PrayerTimesModel {
   final String isha;
 
   /// Convenience list for rendering in order.
-  List<_PrayerEntry> get entries => [
-        _PrayerEntry('Fajr', fajr, '🌅'),
-        _PrayerEntry('Dhuhr', dhuhr, '☀️'),
-        _PrayerEntry('Asr', asr, '🌤'),
-        _PrayerEntry('Maghrib', maghrib, '🌇'),
-        _PrayerEntry('Isha', isha, '🌙'),
+  List<PrayerEntry> get entries => [
+        PrayerEntry('Fajr', fajr, '🌅'),
+        PrayerEntry('Dhuhr', dhuhr, '☀️'),
+        PrayerEntry('Asr', asr, '🌤'),
+        PrayerEntry('Maghrib', maghrib, '🌇'),
+        PrayerEntry('Isha', isha, '🌙'),
       ];
 }
 
-class _PrayerEntry {
-  const _PrayerEntry(this.name, this.time, this.emoji);
+class PrayerEntry {
+  const PrayerEntry(this.name, this.time, this.emoji);
   final String name;
   final String time;
   final String emoji;

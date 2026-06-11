@@ -19,11 +19,24 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'firebase_options.dart';
 import 'core/services/encryption_service.dart';
+import 'core/services/background_sync_service.dart';
+import 'core/services/in_memory_log_output.dart';
+import 'core/widgets/developer_console_widget.dart';
 
-final _log = Logger();
+// _log wires both ConsoleOutput (terminal) and InMemoryLogOutput (diagnostics panel)
+// so every Logger call in the app feeds the in-app Developer Console.
+final _log = Logger(
+  output: MultiOutput([
+    ConsoleOutput(),
+    InMemoryLogOutput.instance,
+  ]),
+);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // LAYER 2: Set global log level — must be inside a function (Dart constraint).
+  Logger.level = Level.all;
 
   // Lock to portrait orientation
   await SystemChrome.setPreferredOrientations([
@@ -59,6 +72,12 @@ Future<void> main() async {
   EncryptionService.instance.initialize();
   _log.i('AmanGhar booted — Local-First mode (Spark plan)');
 
+  // LAYER 3: Register the periodic Android WorkManager background task.
+  // Non-blocking — failure does not prevent the app from starting.
+  await BackgroundSyncService.initialize();
+
+  // LAYER 4: DiagnosticsOverlay is injected INSIDE MaterialApp via its builder
+  // parameter (see AmanGharApp), so it inherits Directionality / MediaQuery / Theme.
   runApp(const ProviderScope(child: AmanGharApp()));
 
   // Initialize AdMob AFTER runApp so it never blocks app startup.
@@ -108,11 +127,15 @@ class AmanGharApp extends ConsumerWidget {
       minTextAdapt: true,
       splitScreenMode: false,
       builder: (context, child) {
-        return MaterialApp.router(
-          title: 'AmanGhar',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          locale: locale,
+        return ValueListenableBuilder<bool>(
+          valueListenable: performanceOverlayEnabled,
+          builder: (context, showPerfOverlay, _) {
+            return MaterialApp.router(
+              title: 'AmanGhar',
+              debugShowCheckedModeBanner: false,
+              showPerformanceOverlay: showPerfOverlay,
+              theme: AppTheme.lightTheme,
+              locale: locale,
           supportedLocales: const [
             Locale('en'),
             Locale('ur'),
@@ -125,6 +148,16 @@ class AmanGharApp extends ConsumerWidget {
           ],
           scaffoldMessengerKey: AppKeys.scaffoldMessengerKey,
           routerConfig: router,
+          // LAYER 4: DiagnosticsOverlay is placed here — INSIDE MaterialApp —
+          // so it inherits Directionality, MediaQuery, Theme, and all other
+          // InheritedWidgets provided by MaterialApp. This eliminates all
+          // "No Directionality/MediaQuery widget found" crashes that occur
+          // when the overlay is mounted above MaterialApp.
+          builder: (context, child) => DiagnosticsOverlay(
+            child: child ?? const SizedBox.shrink(),
+          ),
+        );
+          },
         );
       },
     );
